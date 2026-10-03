@@ -14,6 +14,10 @@ async function db() {
   if (!indexed) {
     await d.collection("users").createIndex({ email: 1 }, { unique: true });
     await d.collection("tasks").createIndex({ userId: 1, date: 1 });
+    await d.collection("pushSubs").createIndex({ endpoint: 1 }, { unique: true });
+    await d.collection("pushSubs").createIndex({ userId: 1 });
+    await d.collection("reminderLog").createIndex({ userId: 1, key: 1 }, { unique: true });
+    await d.collection("reminderLog").createIndex({ createdAt: 1 }, { expireAfterSeconds: 14 * 86400 });
     indexed = true;
   }
   return d;
@@ -24,4 +28,10 @@ export async function users(): Promise<Collection<any>> {
 }
 export async function tasks(): Promise<Collection<any>> {
   return (await db()).collection("tasks");
+}
+export async function pushSubs(): Promise<Collection<any>> {
+  return (await db()).collection("pushSubs");
+}
+export async function reminderLog(): Promise<Collection<any>> {
+  return (await db()).collection("reminderLog");
 }

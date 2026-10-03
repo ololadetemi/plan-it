@@ -412,3 +412,5 @@
 .pl-win { position: relative; width: min(380px, 100%); height: min(680px, calc(100dvh - 24px)); margin: 0 auto; }
 .pl-stage { width: min(460px, 100%); }
 .pl-top-btn { font-size: 12px !important; font-family: var(--sans); }
+.pl { padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+.pl-win { height: min(680px, calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom))); }

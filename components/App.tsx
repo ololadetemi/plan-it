@@ -4,11 +4,13 @@ import { api, writes, type Profile, type Task } from "@/lib/client";
 import Icons from "./Icons";
 import Planner from "./Planner";
 import Setup from "./Setup";
+import { usePwa } from "./usePwa";
 
 export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [editing, setEditing] = useState(false);
+  const pwa = usePwa();
   const [loadErr, setLoadErr] = useState("");
   const [preview, setPreview] = useState<string | null>(null); // theme being tried in setup
 
@@ -82,7 +84,7 @@ export default function App() {
         />
       ) : (
         <Planner profile={profile} tasks={tasks} setTasks={setTasks} reload={reload} saveProfile={saveProfile}
-          onEditProfile={() => setEditing(true)} onSignOut={signOut} />
+          onEditProfile={() => setEditing(true)} onSignOut={signOut} pwa={pwa} />
       )}
     </div>
   );

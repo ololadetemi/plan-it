@@ -1,7 +1,15 @@
 import "./globals.css";
 import "./planner.css";
+import type { Metadata, Viewport } from "next";
 
-export const metadata = { title: "Plan-it", description: "A small, personal daily planner." };
+export const metadata: Metadata = {
+  title: "Plan-it",
+  description: "A small, personal daily planner.",
+  applicationName: "Plan-it",
+  appleWebApp: { capable: true, title: "Plan-it", statusBarStyle: "default" },
+  icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
+};
+export const viewport: Viewport = { themeColor: "#c2467f", width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

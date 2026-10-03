@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   PALETTE, addDays, api, fmtDate, fmtTime, sortTasks, todayStr, tomorrowStr, ymd, type Profile, type Task,
 } from "@/lib/client";
+import type { Pwa } from "./usePwa";
 import {
   COUNT_LINES, ENCOURAGE, ENCOURAGE_ALL, QUOTES, STREAK_LINES, STREAK_MILESTONES, THEME_META, isCountMilestone,
 } from "@/lib/content";
@@ -16,12 +17,16 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 type Toast = { text: string; action?: { label: string; fn: () => void } } | null;
 type Overlay = { title: string; sub: string } | null;
 
-export default function Planner({ profile, tasks, setTasks, reload, saveProfile, onEditProfile, onSignOut }: {
+export default function Planner({ profile, tasks, setTasks, reload, saveProfile, onEditProfile, onSignOut, pwa }: {
   profile: Profile; tasks: Task[]; setTasks: React.Dispatch<React.SetStateAction<Task[]>>; reload: () => void;
-  saveProfile: (p: Partial<Profile>) => Promise<void>; onEditProfile: () => void; onSignOut: () => void;
+  saveProfile: (p: Partial<Profile>) => Promise<void>; onEditProfile: () => void; onSignOut: () => void; pwa: Pwa;
 }) {
   const meta = THEME_META[profile.theme] ?? THEME_META.pink;
   const [view, setView] = useState<View>("today");
+  useEffect(() => { // opened from a notification, e.g. /?view=tomorrow
+    const v = new URLSearchParams(window.location.search).get("view");
+    if (v === "tomorrow" || v === "later" || v === "done") setView(v);
+  }, []);
   const [quote, setQuote] = useState("");
   const [toast, setToast] = useState<Toast>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -327,6 +332,8 @@ export default function Planner({ profile, tasks, setTasks, reload, saveProfile,
           <span className="spark">{meta.spark}</span>
           <span style={{ display: "flex", gap: 2 }}>
             <button className="x pl-top-btn" onClick={() => { setRecap(true); fireConfetti(35); }}>This week</button>
+            {pwa.canInstall && <button className="x pl-top-btn" title="Install Plan-it as an app" onClick={async () => showToast(await pwa.install())}>Install</button>}
+            {pwa.pushSupported && <button className="x" title={pwa.subscribed ? "Notifications are on. Tap to turn off." : "Turn on notifications"} aria-label="Notifications" style={{ fontSize: 14, opacity: pwa.subscribed ? 1 : 0.55 }} onClick={async () => showToast(await pwa.toggleNotifications().catch((e) => e.message))}>{pwa.subscribed ? "🔔" : "🔕"}</button>}
             <button className="x" title="Edit profile" aria-label="Edit profile" style={{ fontSize: 14 }} onClick={onEditProfile}>⚙</button>
             <button className="x pl-top-btn" onClick={onSignOut}>Sign out</button>
           </span>
