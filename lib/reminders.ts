@@ -15,6 +15,10 @@ export function localNow(now: Date, tz: string) {
 }
 
 /** Claims a send slot. Returns false if it was already sent (so repeated pings never double-notify). */
+async function release(userId: string, key: string) {
+  await (await reminderLog()).deleteOne({ userId, key });
+}
+
 async function claim(userId: string, key: string) {
   try { await (await reminderLog()).insertOne({ userId, key, createdAt: new Date() }); return true; }
   catch (e: any) { if (e?.code === 11000) return false; throw e; }
@@ -24,6 +28,14 @@ export async function runReminders(now = new Date()) {
   const userIds: string[] = await (await pushSubs()).distinct("userId");
   const { ObjectId } = await import("mongodb");
   let sent = 0, considered = 0;
+  const errors: string[] = [];
+  // Send, and free the slot again if nothing was delivered so the next ping retries it.
+  const deliver = async (uid: string, key: string, payload: Parameters<typeof sendToUser>[1]) => {
+    const r = await sendToUser(uid, payload);
+    if (r.ok > 0) { sent++; return; }
+    await release(uid, key);
+    errors.push(...r.errors);
+  };
 
   for (const uid of userIds) {
     const u = await (await users()).findOne({ _id: new ObjectId(uid) });
@@ -43,14 +55,15 @@ export async function runReminders(now = new Date()) {
       if (minutes < s.at || minutes - s.at >= CATCH_UP_MIN) continue;
       considered++;
       if (s.kind === "checkin" && !open.length) continue; // nothing to nudge about
-      if (!(await claim(uid, `${date}|${hhmm(s.at)}|${s.kind}`))) continue;
+      const slotKey = `${date}|${hhmm(s.at)}|${s.kind}`;
+      if (!(await claim(uid, slotKey))) continue;
       const titles = open.slice(0, 3).map((t: any) => t.title).join(", ");
       const payload = s.kind === "plan"
         ? open.length
           ? { title: "Time to plan tomorrow", body: `${open.length} ${open.length === 1 ? "task is" : "tasks are"} still open from today. Open Plan-it to bring ${open.length === 1 ? "it" : "them"} along.`, url: "/?view=tomorrow", tag: "plan", badgeCount: open.length }
           : { title: "Time to plan tomorrow", body: "Everything's ticked off for today. What's on for tomorrow?", url: "/?view=tomorrow", tag: "plan", badgeCount: 0 }
         : { title: `${name}, ${open.length} ${open.length === 1 ? "task" : "tasks"} open today`, body: titles + (open.length > 3 ? ` and ${open.length - 3} more` : ""), url: "/", tag: "checkin", badgeCount: open.length };
-      sent += (await sendToUser(uid, payload)) > 0 ? 1 : 0;
+      await deliver(uid, slotKey, payload);
     }
 
     // High priority tasks: remind during the hour before they are due
@@ -58,13 +71,14 @@ export async function runReminders(now = new Date()) {
       const due = toMin(t.dueTime);
       if (minutes < due - 60 || minutes >= due) continue;
       considered++;
-      if (!(await claim(uid, `due|${t._id}|${date}`))) continue;
+      const dueKey = `due|${t._id}|${date}`;
+      if (!(await claim(uid, dueKey))) continue;
       const left = due - minutes;
-      sent += (await sendToUser(uid, {
+      await deliver(uid, dueKey, {
         title: left >= 50 ? "One hour to go" : `${left} ${left === 1 ? "minute" : "minutes"} to go`,
         body: t.title, url: "/", tag: `due-${t._id}`, badgeCount: open.length,
-      })) > 0 ? 1 : 0;
+      });
     }
   }
-  return { users: userIds.length, considered, sent };
+  return { users: userIds.length, considered, sent, errors: [...new Set(errors)] };
 }

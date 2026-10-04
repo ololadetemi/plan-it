@@ -12,16 +12,19 @@ function configure() {
   configured = true;
 }
 
-/** Sends to every device the user has subscribed. Returns how many deliveries were accepted. */
-export async function sendToUser(userId: string, payload: PushPayload): Promise<number> {
+export type SendResult = { ok: number; errors: string[] };
+
+/** Sends to every device the user has subscribed. Reports accepted deliveries and any failures. */
+export async function sendToUser(userId: string, payload: PushPayload): Promise<SendResult> {
   const col = await pushSubs();
   const subs = await col.find({ userId }).toArray();
-  if (!subs.length) return 0;
+  const errors: string[] = [];
+  if (!subs.length) return { ok: 0, errors: ["no subscribed device"] };
   if (process.env.PUSH_DRY_RUN) {
     console.log(`[push dry run] ${userId}: ${payload.title} | ${payload.body} | badge=${payload.badgeCount}`);
-    return subs.length;
+    return { ok: subs.length, errors };
   }
-  configure();
+  try { configure(); } catch (e: any) { console.error("[push]", e.message); return { ok: 0, errors: [e.message] }; }
   let ok = 0;
   await Promise.all(subs.map(async (s) => {
     try {
@@ -30,8 +33,12 @@ export async function sendToUser(userId: string, payload: PushPayload): Promise<
     } catch (e: any) {
       // 404/410 mean the browser dropped this subscription for good.
       if (e?.statusCode === 404 || e?.statusCode === 410) await col.deleteOne({ endpoint: s.endpoint });
-      else console.error("[push] send failed", e?.statusCode, e?.body ?? e?.message);
+      else {
+        const host = new URL(s.endpoint).host;
+        console.error("[push] send failed", host, e?.statusCode, e?.body ?? e?.message);
+        errors.push(`${host} ${e?.statusCode ?? ""} ${String(e?.body ?? e?.message).slice(0, 120)}`.trim());
+      }
     }
   }));
-  return ok;
+  return { ok, errors };
 }

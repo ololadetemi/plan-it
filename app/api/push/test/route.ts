@@ -12,6 +12,6 @@ export async function POST() {
     const { date } = localNow(new Date(), tz);
     const open = await (await tasks()).countDocuments({ userId: a.uid, done: false, archived: { $ne: true }, date: { $lte: date } });
     const n = await sendToUser(a.uid, { title: "Plan-it notifications are on", body: "You will get your check-ins here.", url: "/", tag: "test", badgeCount: open });
-    return n ? Response.json({ ok: true, sent: n }) : bad("No device is subscribed yet.", 404);
+    return n.ok ? Response.json({ ok: true, sent: n.ok }) : bad(n.errors.join("; ") || "No device is subscribed yet.", n.errors[0]?.includes("no subscribed") ? 404 : 502);
   } catch (e: any) { return bad(e.message, 500); }
 }
