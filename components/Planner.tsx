@@ -31,10 +31,11 @@ export default function Planner({ profile, tasks, setTasks, reload, saveProfile,
   const [toast, setToast] = useState<Toast>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [celebration, setCelebration] = useState<Overlay>(null);
-  const [recap, setRecap] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [reuseOpen, setReuseOpen] = useState(false);
   const [prioOpen, setPrioOpen] = useState(false);
   const confettiRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const [, tick] = useState(0);
 
@@ -55,9 +56,15 @@ export default function Planner({ profile, tasks, setTasks, reload, saveProfile,
     if (!profile.categories.includes(category) && category !== NEW_CAT) setCategory(profile.categories[0] ?? "");
   }, [profile.categories, category]);
   useEffect(() => {
-    const close = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest(".prio-wrap")) setPrioOpen(false); };
+    const close = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest(".prio-wrap")) setPrioOpen(false);
+      if (!menuRef.current?.contains(t)) setMenuOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuOpen(false); };
     document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("click", close); document.removeEventListener("keydown", esc); };
   }, []);
 
   const today = todayStr(), tomorrow = tomorrowStr();
@@ -295,13 +302,6 @@ export default function Planner({ profile, tasks, setTasks, reload, saveProfile,
     })}</>;
   }
 
-  // weekly recap
-  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 6); weekAgo.setHours(0, 0, 0, 0);
-  const recent = tasks.filter((t) => t.done && t.doneAt && t.doneAt >= weekAgo.getTime());
-  const byCat: Record<string, number> = {};
-  recent.forEach((t) => { byCat[t.category] = (byCat[t.category] || 0) + 1; });
-  const topCats = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 4);
-
   const prioLabel = { low: "Low priority", normal: "Normal priority", high: "High priority" }[priority];
 
   return (
@@ -316,27 +316,28 @@ export default function Planner({ profile, tasks, setTasks, reload, saveProfile,
           <p className="c-sub">{celebration?.sub}</p>
           <button className="c-close" onClick={() => setCelebration(null)}>Keep going</button>
         </div>
-        <div className={"recap" + (recap ? " show" : "")}>
-          <svg className="c-icon" aria-hidden="true" style={{ width: 40, height: 40 }}><use href={`#${meta.icon}`} /></svg>
-          <p className="recap-title">Your week</p>
-          <p className="recap-count">{recent.length}</p>
-          <p className="recap-count-label">tasks crossed off in the last 7 days</p>
-          <div className="recap-cats">
-            {topCats.length ? topCats.map(([c, k]) => <div className="recap-row" key={c}><span>{c}</span><span className="recap-n">{k}</span></div>)
-              : <div className="recap-empty">Nothing crossed off yet. This fills in as you go.</div>}
-          </div>
-          <button className="c-close" onClick={() => setRecap(false)}>Nice</button>
-        </div>
 
         <div className="top">
           <span className="spark">{meta.spark}</span>
-          <span style={{ display: "flex", gap: 2 }}>
-            <button className="x pl-top-btn" onClick={() => { setRecap(true); fireConfetti(35); }}>This week</button>
-            {pwa.canInstall && <button className="x pl-top-btn" title="Install Plan-it as an app" onClick={async () => showToast(await pwa.install())}>Install</button>}
-            {pwa.pushSupported && <button className="x" title={pwa.subscribed ? "Notifications are on. Tap to turn off." : "Turn on notifications"} aria-label="Notifications" style={{ fontSize: 14, opacity: pwa.subscribed ? 1 : 0.55 }} onClick={async () => showToast(await pwa.toggleNotifications().catch((e) => e.message))}>{pwa.subscribed ? "🔔" : "🔕"}</button>}
-            <button className="x" title="Edit profile" aria-label="Edit profile" style={{ fontSize: 14 }} onClick={onEditProfile}>⚙</button>
-            <button className="x pl-top-btn" onClick={onSignOut}>Sign out</button>
-          </span>
+          <div className="menu-wrap" ref={menuRef}>
+            <button className="x gear" title="Settings" aria-label="Settings" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((o) => !o)}>⚙</button>
+            {menuOpen && (
+              <div className="menu" role="menu">
+                <button className="menu-item" role="menuitem" onClick={() => { setMenuOpen(false); onEditProfile(); }}>Edit profile</button>
+                {pwa.pushSupported && (
+                  <button className="menu-item" role="menuitemcheckbox" aria-checked={pwa.subscribed}
+                    onClick={async () => showToast(await pwa.toggleNotifications().catch((e) => e.message))}>
+                    <span>Notifications: {pwa.subscribed ? "On" : "Off"}</span>
+                    <span className={"menu-switch" + (pwa.subscribed ? " on" : "")} aria-hidden="true" />
+                  </button>
+                )}
+                {pwa.canInstall && (
+                  <button className="menu-item" role="menuitem" onClick={async () => { setMenuOpen(false); showToast(await pwa.install()); }}>Install app</button>
+                )}
+                <button className="menu-item" role="menuitem" onClick={() => { setMenuOpen(false); onSignOut(); }}>Sign out</button>
+              </div>
+            )}
+          </div>
         </div>
         <header>
           <h1>{greeting}</h1>

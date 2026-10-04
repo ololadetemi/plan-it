@@ -7,7 +7,10 @@ export const metadata: Metadata = {
   description: "A small, personal daily planner.",
   applicationName: "Plan-it",
   appleWebApp: { capable: true, title: "Plan-it", statusBarStyle: "default" },
-  icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
+  icons: {
+    icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }, { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" }],
+    apple: [120, 152, 167, 180].map((n) => ({ url: `/icons/apple-touch-icon-${n}.png`, sizes: `${n}x${n}`, type: "image/png" })),
+  },
 };
 export const viewport: Viewport = { themeColor: "#c2467f", width: "device-width", initialScale: 1, viewportFit: "cover" };
 

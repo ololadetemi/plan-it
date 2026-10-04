@@ -72,9 +72,9 @@ export const isCountMilestone = (n: number) => COUNT_LIST.includes(n) || (n > 10
 
 export const THEME_META: Record<string, { label: string; icon: string; checkIcon: string | null; checkGlyph: string; spark: string }> = {
   pink: { label: "Pink & bow", icon: "bow", checkIcon: null, checkGlyph: "♥", spark: "♡ ˚ ⋆ ˚ ♡" },
-  blue: { label: "Blue & tie", icon: "tie", checkIcon: "peace", checkGlyph: "", spark: "TODAY" },
-  amber: { label: "Amber & star", icon: "star", checkIcon: "spark", checkGlyph: "", spark: "✦ ⋆ ✦" },
-  green: { label: "Green & star", icon: "star", checkIcon: "spark", checkGlyph: "", spark: "✦ ⋆ ✦" },
-  mono: { label: "Mono ✨", icon: "diamond", checkIcon: null, checkGlyph: "✨", spark: "✧ · ✧" },
+  blue: { label: "Blue & tie", icon: "tie", checkIcon: "peace", checkGlyph: "", spark: "♡ ˚ ⋆ ˚ ♡" },
+  amber: { label: "Amber & star", icon: "star", checkIcon: "spark", checkGlyph: "", spark: "♡ ˚ ⋆ ˚ ♡" },
+  green: { label: "Green & star", icon: "star", checkIcon: "spark", checkGlyph: "", spark: "♡ ˚ ⋆ ˚ ♡" },
+  mono: { label: "Mono ✨", icon: "diamond", checkIcon: null, checkGlyph: "✨", spark: "♡ ˚ ⋆ ˚ ♡" },
 };
 export const THEMES = ["pink", "blue", "amber", "green", "mono"];

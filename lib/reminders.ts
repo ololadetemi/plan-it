@@ -47,9 +47,9 @@ export async function runReminders(now = new Date()) {
       const titles = open.slice(0, 3).map((t: any) => t.title).join(", ");
       const payload = s.kind === "plan"
         ? open.length
-          ? { title: "Time to plan tomorrow", body: `${open.length} ${open.length === 1 ? "task is" : "tasks are"} still open from today. Open Plan-it to bring ${open.length === 1 ? "it" : "them"} along.`, url: "/?view=tomorrow", tag: "plan" }
-          : { title: "Time to plan tomorrow", body: "Everything's ticked off for today. What's on for tomorrow?", url: "/?view=tomorrow", tag: "plan" }
-        : { title: `${name}, ${open.length} ${open.length === 1 ? "task" : "tasks"} open today`, body: titles + (open.length > 3 ? ` and ${open.length - 3} more` : ""), url: "/", tag: "checkin" };
+          ? { title: "Time to plan tomorrow", body: `${open.length} ${open.length === 1 ? "task is" : "tasks are"} still open from today. Open Plan-it to bring ${open.length === 1 ? "it" : "them"} along.`, url: "/?view=tomorrow", tag: "plan", badgeCount: open.length }
+          : { title: "Time to plan tomorrow", body: "Everything's ticked off for today. What's on for tomorrow?", url: "/?view=tomorrow", tag: "plan", badgeCount: 0 }
+        : { title: `${name}, ${open.length} ${open.length === 1 ? "task" : "tasks"} open today`, body: titles + (open.length > 3 ? ` and ${open.length - 3} more` : ""), url: "/", tag: "checkin", badgeCount: open.length };
       sent += (await sendToUser(uid, payload)) > 0 ? 1 : 0;
     }
 
@@ -62,7 +62,7 @@ export async function runReminders(now = new Date()) {
       const left = due - minutes;
       sent += (await sendToUser(uid, {
         title: left >= 50 ? "One hour to go" : `${left} ${left === 1 ? "minute" : "minutes"} to go`,
-        body: t.title, url: "/", tag: `due-${t._id}`,
+        body: t.title, url: "/", tag: `due-${t._id}`, badgeCount: open.length,
       })) > 0 ? 1 : 0;
     }
   }

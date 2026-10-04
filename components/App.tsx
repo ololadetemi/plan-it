@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, writes, type Profile, type Task } from "@/lib/client";
+import { api, todayStr, writes, type Profile, type Task } from "@/lib/client";
 import Icons from "./Icons";
 import Planner from "./Planner";
 import Setup from "./Setup";
@@ -43,6 +43,15 @@ export default function App() {
     return () => { clearInterval(timer); document.removeEventListener("visibilitychange", refresh); window.removeEventListener("focus", refresh); };
   }, []);
 
+  // App icon badge: today's open tasks (including anything overdue). Pushes keep it current while the app is closed.
+  useEffect(() => {
+    const nav = navigator as Navigator & { setAppBadge?: (n: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    if (!profile?.setupDone || !nav.setAppBadge) return;
+    const today = todayStr();
+    const n = tasks.filter((t) => !t.done && t.date <= today).length;
+    (n > 0 ? nav.setAppBadge(n) : nav.clearAppBadge!()).catch(() => {});
+  }, [tasks, profile?.setupDone]);
+
   const saveProfile = useCallback(async (p: Partial<Profile>) => {
     setProfile((x) => (x ? { ...x, ...p } : x));
     const saved = await api<Profile>("/api/profile", "PUT", p);
@@ -51,6 +60,7 @@ export default function App() {
 
   async function signOut() {
     await fetch("/api/auth/logout", { method: "POST" });
+    (navigator as any).clearAppBadge?.().catch?.(() => {});
     window.location.href = "/login";
   }
 

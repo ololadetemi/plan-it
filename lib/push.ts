@@ -1,7 +1,7 @@
 import webpush from "web-push";
 import { pushSubs } from "./db";
 
-export type PushPayload = { title: string; body: string; url?: string; tag?: string };
+export type PushPayload = { title: string; body: string; url?: string; tag?: string; badgeCount?: number };
 
 let configured = false;
 function configure() {
@@ -18,7 +18,7 @@ export async function sendToUser(userId: string, payload: PushPayload): Promise<
   const subs = await col.find({ userId }).toArray();
   if (!subs.length) return 0;
   if (process.env.PUSH_DRY_RUN) {
-    console.log(`[push dry run] ${userId}: ${payload.title} | ${payload.body}`);
+    console.log(`[push dry run] ${userId}: ${payload.title} | ${payload.body} | badge=${payload.badgeCount}`);
     return subs.length;
   }
   configure();
