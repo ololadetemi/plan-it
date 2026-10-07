@@ -60,24 +60,28 @@ export async function runReminders(now = new Date()) {
       const titles = open.slice(0, 3).map((t: any) => t.title).join(", ");
       const payload = s.kind === "plan"
         ? open.length
-          ? { title: "Time to plan tomorrow", body: `${open.length} ${open.length === 1 ? "task is" : "tasks are"} still open from today. Open Plan-it to bring ${open.length === 1 ? "it" : "them"} along.`, url: "/?view=tomorrow", tag: "plan", badgeCount: open.length }
-          : { title: "Time to plan tomorrow", body: "Everything's ticked off for today. What's on for tomorrow?", url: "/?view=tomorrow", tag: "plan", badgeCount: 0 }
+          ? { title: "Time to plan tomorrow", body: `${open.length} ${open.length === 1 ? "task is" : "tasks are"} still open from today. Open Plan-it to bring ${open.length === 1 ? "it" : "them"} along.`, url: "/?plan=1", tag: "plan", badgeCount: open.length }
+          : { title: "Time to plan tomorrow", body: "Everything's ticked off for today. What's on for tomorrow?", url: "/?plan=1", tag: "plan", badgeCount: 0 }
         : { title: `${name}, ${open.length} ${open.length === 1 ? "task" : "tasks"} open today`, body: titles + (open.length > 3 ? ` and ${open.length - 3} more` : ""), url: "/", tag: "checkin", badgeCount: open.length };
       await deliver(uid, slotKey, payload);
     }
 
-    // High priority tasks: remind during the hour before they are due
+    // High priority tasks with a due time today: 1 hour before, 30 minutes before, and at the due time
     for (const t of open.filter((x: any) => x.priority === "high" && x.date === date && x.dueTime)) {
       const due = toMin(t.dueTime);
-      if (minutes < due - 60 || minutes >= due) continue;
-      considered++;
-      const dueKey = `due|${t._id}|${date}`;
-      if (!(await claim(uid, dueKey))) continue;
-      const left = due - minutes;
-      await deliver(uid, dueKey, {
-        title: left >= 50 ? "One hour to go" : `${left} ${left === 1 ? "minute" : "minutes"} to go`,
-        body: t.title, url: "/", tag: `due-${t._id}`, badgeCount: open.length,
-      });
+      for (const offset of [60, 30, 0]) {
+        const point = due - offset;
+        if (minutes < point || minutes - point >= CATCH_UP_MIN) continue;
+        considered++;
+        const dueKey = `due|${t._id}|${date}|${offset}`;
+        if (!(await claim(uid, dueKey))) continue;
+        const left = due - minutes;
+        const text = (offset === 0 || left <= 0) ? "Due now" : left >= 50 ? "One hour to go" : `${left} ${left === 1 ? "minute" : "minutes"} to go`;
+        await deliver(uid, dueKey, {
+          title: text, body: t.title, tag: `due-${t._id}`, badgeCount: open.length,
+          url: `/?reminder=${encodeURIComponent(`${text}: ${t.title}`.slice(0, 140))}`,
+        });
+      }
     }
   }
   return { users: userIds.length, considered, sent, errors: [...new Set(errors)] };

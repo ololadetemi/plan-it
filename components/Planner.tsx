@@ -23,9 +23,12 @@ export default function Planner({ profile, tasks, setTasks, reload, saveProfile,
 }) {
   const meta = THEME_META[profile.theme] ?? THEME_META.pink;
   const [view, setView] = useState<View>("today");
-  useEffect(() => { // opened from a notification, e.g. /?view=tomorrow
-    const v = new URLSearchParams(window.location.search).get("view");
-    if (v === "tomorrow" || v === "later" || v === "done") setView(v);
+  const [banner, setBanner] = useState<{ type: "plan" } | { type: "reminder"; text: string } | null>(null);
+  useEffect(() => { // opened from a notification: /?plan=1 or /?reminder=...
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("plan")) { setView("tomorrow"); setBanner({ type: "plan" }); }
+    else if (q.get("reminder")) setBanner({ type: "reminder", text: q.get("reminder")!.slice(0, 140) });
+    if (q.has("plan") || q.has("reminder")) window.history.replaceState(null, "", window.location.pathname);
   }, []);
   const [quote, setQuote] = useState("");
   const [toast, setToast] = useState<Toast>(null);
@@ -140,6 +143,15 @@ export default function Planner({ profile, tasks, setTasks, reload, saveProfile,
       const all = view === "today" && list.length > 0 && list.every((x) => x.done);
       showToast(pick(all ? ENCOURAGE_ALL : ENCOURAGE));
     }
+  }
+
+  // Tasks still open from today (or earlier), the ones the 9pm prompt offers to carry over.
+  const unfinished = tasks.filter((t) => !t.done && t.date <= today);
+  function moveAllToTomorrow() {
+    unfinished.forEach((t) => patch(t.id, { date: tomorrow }));
+    setBanner(null);
+    setView("tomorrow");
+    showToast(unfinished.length === 1 ? "Moved 1 task to tomorrow" : `Moved ${unfinished.length} tasks to tomorrow`);
   }
 
   function removeTask(t: Task) {
@@ -344,6 +356,24 @@ export default function Planner({ profile, tasks, setTasks, reload, saveProfile,
           <p className="dateline">{dateLine}</p>
         </header>
         <p className="quote" role="button" tabIndex={0} title="Tap for another" onClick={newQuote} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && newQuote()}>{quote}</p>
+
+        {banner && (
+          <div className={"banner " + banner.type}>
+            {banner.type === "reminder" ? (<>
+              <div>⏰ {banner.text}</div>
+              <div className="b-actions"><button className="pill solid" onClick={() => setBanner(null)}>Got it</button></div>
+            </>) : unfinished.length ? (<>
+              <div>It&apos;s time to plan tomorrow. {unfinished.length} {unfinished.length === 1 ? "task is" : "tasks are"} still open from today. Bring {unfinished.length === 1 ? "it" : "them"} along?</div>
+              <div className="b-actions">
+                <button className="pill solid" onClick={moveAllToTomorrow}>Move to tomorrow</button>
+                <button className="pill" onClick={() => setBanner(null)}>Not now</button>
+              </div>
+            </>) : (<>
+              <div>Everything&apos;s ticked off for today ♡ What&apos;s on for tomorrow?</div>
+              <div className="b-actions"><button className="pill" onClick={() => { setBanner(null); titleRef.current?.focus(); }}>Start planning</button></div>
+            </>)}
+          </div>
+        )}
 
         <section className="progress">
           <div className="prog-row"><span className="prog-count">{progCount}</span><span className="prog-msg">{view === "today" ? progMsg : ""}</span></div>

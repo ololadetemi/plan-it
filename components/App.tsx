@@ -68,7 +68,7 @@ export default function App() {
     <div className="pl" data-theme={preview ?? profile?.theme ?? "pink"}>
       <Icons />
       {!profile ? (
-        <p style={{ color: "#8a6f8e" }}>{loadErr || "Loading your planner..."}</p>
+        <p style={{ color: "#8a6f8e", textAlign: "center", paddingTop: "40vh" }}>{loadErr || "Loading your planner..."}</p>
       ) : !profile.setupDone || editing ? (
         <Setup
           editing={profile.setupDone}
